@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lethal Lab — Calculadora de Counter OPTCG</title>
+<meta name="description" content="Calculadora de lethal e otimizador de turno do Enel para One Piece Card Game. Descubra quanto counter o oponente precisa para sobreviver.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --storm-900:#161028;
+  --storm-800:#1E1736;
+  --storm-700:#2A2148;
+  --storm-600:#3A2F60;
+  --bolt:#F5C53D;
+  --bolt-dim:#C79B22;
+  --don:#9D8CFF;
+  --danger:#FF6B8A;
+  --danger-bg:#3D2238;
+  --ink:#EFEAFB;
+  --ink-dim:#A99FC9;
+  --ok:#7BE3A0;
+  --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--storm-900);
+  background-image:radial-gradient(ellipse 80% 50% at 50% -10%, #2E2358 0%, transparent 60%);
+  color:var(--ink);
+  font-family:'Space Grotesk',system-ui,sans-serif;
+  min-height:100vh;
+  padding:0 16px 64px;
+}
+.wrap{max-width:880px;margin:0 auto}
+header{padding:40px 0 8px;text-align:center}
+.logo{
+  font-family:'Bungee',cursive;
+  font-size:clamp(28px,6vw,44px);
+  letter-spacing:1px;
+  color:var(--bolt);
+  text-shadow:0 0 24px rgba(245,197,61,.35);
+  line-height:1.1;
+}
+.logo .zap{display:inline-block;transform:rotate(8deg)}
+.tagline{color:var(--ink-dim);margin-top:8px;font-size:15px}
+.tabs{display:flex;gap:8px;justify-content:center;margin:28px 0 24px;flex-wrap:wrap}
+.tab{
+  font-family:'Bungee',cursive;font-size:13px;letter-spacing:.5px;
+  background:var(--storm-700);color:var(--ink-dim);
+  border:1px solid var(--storm-600);border-radius:999px;
+  padding:10px 20px;cursor:pointer;transition:all .15s;
+}
+.tab:hover{color:var(--ink)}
+.tab.active{background:var(--bolt);color:var(--storm-900);border-color:var(--bolt)}
+.tab:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--don);outline-offset:2px}
+.panel{display:none}
+.panel.active{display:block}
+.card{
+  background:var(--storm-800);
+  border:1px solid var(--storm-600);
+  border-radius:var(--radius);
+  padding:20px;
+  margin-bottom:16px;
+}
+.card h2{
+  font-family:'Bungee',cursive;font-size:14px;letter-spacing:.5px;
+  color:var(--don);margin-bottom:14px;text-transform:uppercase;
+}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.field label{display:block;font-size:13px;color:var(--ink-dim);margin-bottom:6px}
+input[type=number],input[type=text]{
+  width:100%;background:var(--storm-900);border:1px solid var(--storm-600);
+  border-radius:8px;color:var(--ink);font-family:'Space Grotesk',monospace;
+  font-size:16px;padding:9px 10px;font-variant-numeric:tabular-nums;
+}
+.rows{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.row{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  background:var(--storm-900);border:1px solid var(--storm-600);
+  border-radius:10px;padding:10px 12px;
+}
+.row.late{border-color:var(--bolt-dim);box-shadow:0 0 0 1px var(--bolt-dim) inset}
+.row input.nm{width:118px;font-size:14px}
+.row input.bp{width:86px}
+.donctl{display:inline-flex;align-items:center;gap:6px}
+.donctl span{font-size:13px;min-width:50px;text-align:center;color:var(--don);font-weight:500}
+button{
+  background:var(--storm-700);border:1px solid var(--storm-600);color:var(--ink);
+  border-radius:8px;padding:8px 14px;cursor:pointer;font-family:'Space Grotesk',sans-serif;
+  font-size:14px;transition:background .15s;
+}
+button:hover{background:var(--storm-600)}
+button.mini{padding:3px 11px;font-size:15px;line-height:1.2}
+button.bolt-pick{padding:3px 9px;font-size:14px}
+button.bolt-pick.on{background:var(--bolt);border-color:var(--bolt);color:var(--storm-900)}
+button.primary{
+  background:var(--bolt);border-color:var(--bolt);color:var(--storm-900);
+  font-family:'Bungee',cursive;font-size:12px;letter-spacing:.5px;padding:11px 20px;
+}
+button.primary:hover{background:#FFD45C}
+button.ghost-del{margin-left:auto;color:var(--ink-dim);padding:3px 9px}
+button.ghost-del:hover{color:var(--danger)}
+.power{font-weight:700;min-width:64px;font-variant-numeric:tabular-nums}
+.badge{font-size:12px;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.badge.ctr{background:var(--danger-bg);color:var(--danger)}
+.badge.miss{background:var(--storm-700);color:var(--ink-dim)}
+.badge.boost{background:#2E2A14;color:var(--bolt)}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+.metric{background:var(--storm-800);border:1px solid var(--storm-600);border-radius:var(--radius);padding:16px}
+.metric .lbl{font-size:12px;color:var(--ink-dim);margin-bottom:6px}
+.metric .val{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.metric.hero{border-color:var(--bolt-dim)}
+.metric.hero .val{color:var(--bolt)}
+.verdict{
+  border:1px solid var(--storm-600);border-radius:var(--radius);
+  padding:18px 20px;font-size:15px;line-height:1.65;background:var(--storm-800);
+}
+.verdict.hot{border-color:var(--bolt);box-shadow:0 0 28px rgba(245,197,61,.18)}
+.verdict strong{color:var(--bolt)}
+.hint{font-size:13px;color:var(--ink-dim);margin-top:10px;line-height:1.6}
+.donleft{font-size:13px;color:var(--ink-dim)}
+.cardhead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.cardhead h2{margin-bottom:0}
+.ability{font-size:14px;color:var(--ink-dim);line-height:1.6;margin-bottom:14px}
+.ability b{color:var(--ink);font-weight:500}
+footer{margin-top:40px;text-align:center;color:var(--ink-dim);font-size:13px;line-height:1.7}
+@media (max-width:560px){
+  .row input.nm{width:100%}
+  .metric .val{font-size:24px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .verdict.hot{animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 18px rgba(245,197,61,.12)}50%{box-shadow:0 0 34px rgba(245,197,61,.28)}}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="logo">LETHAL LAB <span class="zap">⚡</span></div>
+  <p class="tagline">Matemática de counter para One Piece Card Game — quanto o oponente precisa gastar para sobreviver?</p>
+</header>
+
+<div class="tabs" role="tablist">
+  <button class="tab active" id="tabG" role="tab" aria-selected="true" aria-controls="panelG">Lethal geral</button>
+  <button class="tab" id="tabE" role="tab" aria-selected="false" aria-controls="panelE">Turno do Enel</button>
+</div>
+
+<!-- ================= LETHAL GERAL ================= -->
+<section class="panel active" id="panelG" role="tabpanel" aria-labelledby="tabG">
+  <div class="card">
+    <h2>Defesa do oponente</h2>
+    <div class="grid">
+      <div class="field"><label for="g_def">Poder do Líder dele</label><input type="number" id="g_def" value="5000" step="1000" min="0"></div>
+      <div class="field"><label for="g_life">Vida restante dele</label><input type="number" id="g_life" value="2" step="1" min="0"></div>
+      <div class="field"><label for="g_blk">Blockers ativos dele</label><input type="number" id="g_blk" value="0" step="1" min="0"></div>
+      <div class="field"><label for="g_don">Seus DON!! livres</label><input type="number" id="g_don" value="2" step="1" min="0"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cardhead"><h2>Seus ataques</h2><span class="donleft" id="g_left"></span></div>
+    <div class="rows" id="g_rows"></div>
+    <div class="actions">
+      <button id="g_add" class="mini">+ Adicionar ataque</button>
+      <button id="g_auto" class="primary">⚡ Distribuir DON!!</button>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="lbl">Acertos para vencer</div><div class="val" id="g_hits">–</div></div>
+    <div class="metric"><div class="lbl">Ataques que ele deve parar</div><div class="val" id="g_stops">–</div></div>
+    <div class="metric hero"><div class="lbl">Counter mínimo p/ sobreviver</div><div class="val" id="g_ctr">–</div></div>
+    <div class="metric"><div class="lbl">Cartas que ele ganha</div><div class="val" id="g_draws">–</div></div>
+  </div>
+  <div class="verdict" id="g_verdict"></div>
+  <p class="hint">Lembrete: cada Vida perdida vira +1 carta na mão dele. O número acima já assume defesa perfeita do oponente — blockers sacrificados de graça e counters gastos só no mínimo necessário.</p>
+</section>
+
+<!-- ================= TURNO DO ENEL ================= -->
+<section class="panel" id="panelE" role="tabpanel" aria-labelledby="tabE">
+  <div class="card">
+    <h2>Setup do turno</h2>
+    <div class="grid">
+      <div class="field"><label for="e_start">DON!! ativos no início</label><input type="number" id="e_start" value="6" step="1" min="0" max="10"></div>
+      <div class="field"><label for="e_der">DON!! que volta pro deck</label><input type="number" id="e_der" value="3" step="1" min="0" max="10"></div>
+      <div class="field"><label for="e_def">Poder do Líder dele</label><input type="number" id="e_def" value="5000" step="1000" min="0"></div>
+      <div class="field"><label for="e_life">Vida restante dele</label><input type="number" id="e_life" value="2" step="1" min="0"></div>
+      <div class="field"><label for="e_blk">Blockers ativos dele</label><input type="number" id="e_blk" value="0" step="1" min="0"></div>
+    </div>
+    <p class="ability" id="e_ability"></p>
+  </div>
+
+  <div class="card">
+    <div class="cardhead"><h2>Seus atacantes</h2><span class="donleft" id="e_left"></span></div>
+    <div class="rows" id="e_rows"></div>
+    <div class="actions">
+      <button id="e_add" class="mini">+ Adicionar atacante</button>
+      <button id="e_opt" class="primary">⚡ Otimizar turno</button>
+    </div>
+    <p class="hint">O botão ⚡ em cada linha marca quem recebe os DON!! da habilidade do Líder — esse atacante segura o ataque e bate por último, depois do deramp.</p>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="lbl">Acertos para vencer</div><div class="val" id="e_hits">–</div></div>
+    <div class="metric"><div class="lbl">Ataques que ele deve parar</div><div class="val" id="e_stops">–</div></div>
+    <div class="metric hero"><div class="lbl">Counter mínimo p/ sobreviver</div><div class="val" id="e_ctr">–</div></div>
+  </div>
+  <div class="verdict" id="e_verdict"></div>
+  <p class="hint">Sequência simulada: anexe os DON!! iniciais → ataque com todos menos o marcado → devolva DON!! com suas cartas → ative o Líder anexando no marcado → finalize com ele. O deramp aqui é tratado como gratuito; se suas cartas têm custo, desconte nos DON!! iniciais.</p>
+</section>
+
+<footer>
+  Lethal Lab é uma ferramenta de estudo feita por fãs — sem afiliação com Bandai.<br>
+  Não considera eventos de counter, Triggers da Vida nem efeitos On Attack: o resultado é o piso de counter exigido.
+</footer>
+</div>
+
+<script>
+'use strict';
+const fmt = n => n.toLocaleString('pt-BR');
+const counterCost = (atk, def) => atk < def ? 0 : atk - def + 1000;
+
+function minCounter(costs, life, blockers){
+  const n = costs.length, mustStop = n - life;
+  if (mustStop <= 0) return { val:null, mustStop };
+  const sorted = [...costs].sort((a,b)=>a-b);
+  const zeros = sorted.filter(c=>c===0).length;
+  const zeroStops = Math.min(zeros, mustStop);
+  const remaining = mustStop - zeroStops;
+  const bUsed = Math.min(blockers, remaining);
+  const toCounter = remaining - bUsed;
+  const nonZero = sorted.filter(c=>c>0);
+  if (toCounter > nonZero.length) return { val:Infinity, mustStop, bUsed, zeroStops };
+  return { val:nonZero.slice(0,toCounter).reduce((s,c)=>s+c,0), mustStop, bUsed, zeroStops };
+}
+const num = id => Math.max(0, Math.round(+document.getElementById(id).value || 0));
+
+/* ---------- Tabs ---------- */
+const tabG=document.getElementById('tabG'), tabE=document.getElementById('tabE');
+const panelG=document.getElementById('panelG'), panelE=document.getElementById('panelE');
+function switchTab(toE){
+  tabG.classList.toggle('active',!toE); tabE.classList.toggle('active',toE);
+  tabG.setAttribute('aria-selected',!toE); tabE.setAttribute('aria-selected',toE);
+  panelG.classList.toggle('active',!toE); panelE.classList.toggle('active',toE);
+}
+tabG.addEventListener('click',()=>switchTab(false));
+tabE.addEventListener('click',()=>switchTab(true));
+
+/* ---------- Row rendering shared ---------- */
+function rowHTML(row,i,opts){
+  const o=opts||{};
+  return ''
+   + (o.boltBtn ? '<button class="bolt-pick'+(o.late===i?' on':'')+'" data-i="'+i+'" data-act="late" aria-label="Recebe a habilidade do Líder" '+(row.isLeader?'style="visibility:hidden"':'')+'>⚡</button>' : '')
+   + '<input type="text" class="nm" value="'+row.name.replace(/"/g,'&quot;')+'" data-i="'+i+'" data-f="nm" aria-label="Nome">'
+   + '<input type="number" class="bp" value="'+row.base+'" step="1000" min="0" data-i="'+i+'" data-f="bp" aria-label="Poder base">'
+   + '<span class="donctl"><button class="mini" data-i="'+i+'" data-act="dm" aria-label="Remover DON">−</button><span>'+row.don+' DON</span><button class="mini" data-i="'+i+'" data-act="dp" aria-label="Adicionar DON">+</button></span>'
+   + (o.bonus && o.late===i ? '<span class="badge boost">+'+o.bonus+' do Líder</span>' : '')
+   + '<span class="power">'+fmt(o.power)+'</span>'
+   + '<span class="badge '+(o.cost===0?'miss':'ctr')+'">'+(o.cost===0?'não conecta':'counter '+fmt(o.cost))+'</span>'
+   + '<button class="ghost-del" data-i="'+i+'" data-act="rm" aria-label="Remover linha" '+(row.isLeader?'style="visibility:hidden"':'')+'>✕</button>';
+}
+
+/* ================= GERAL ================= */
+const G = { rows:[ {name:'Líder',base:5000,don:0}, {name:'Personagem 1',base:6000,don:0} ] };
+const gAlloc = ()=>G.rows.reduce((s,r)=>s+r.don,0);
+
+function gRender(){
+  const def=num('g_def'), life=num('g_life'), blk=num('g_blk'), free=num('g_don');
+  document.getElementById('g_left').textContent='DON!! usados: '+gAlloc()+' / '+free;
+  const powers=G.rows.map(r=>r.base+r.don*1000);
+  const costs=powers.map(p=>counterCost(p,def));
+  const box=document.getElementById('g_rows'); box.innerHTML='';
+  G.rows.forEach((row,i)=>{
+    const div=document.createElement('div'); div.className='row';
+    div.innerHTML=rowHTML(row,i,{power:powers[i],cost:costs[i]});
+    box.appendChild(div);
+  });
+  const r=minCounter(costs,life,blk);
+  document.getElementById('g_hits').textContent=life+1;
+  document.getElementById('g_stops').textContent=Math.max(0,G.rows.length-life);
+  document.getElementById('g_draws').textContent=Math.min(life,G.rows.length);
+  const ctr=document.getElementById('g_ctr'), v=document.getElementById('g_verdict');
+  v.classList.remove('hot');
+  if(r.val===null){ ctr.textContent='∞';
+    v.innerHTML='Sem lethal: são '+G.rows.length+' ataque(s) para '+(life+1)+' acertos necessários. Mesmo conectando tudo, a Vida dele não zera.';
+  } else if(r.val===Infinity || r.val===0){ ctr.textContent='0';
+    v.innerHTML='Sem pressão: entre ataques que não conectam e blockers sacrificados, o oponente sobrevive gastando 0 de counter. Reforce os ataques fracos ou remova blockers antes.';
+  } else { ctr.textContent=fmt(r.val);
+    v.innerHTML='Para sobreviver, o oponente precisa de no mínimo <strong>'+fmt(r.val)+' de counter</strong>'+(r.bUsed>0?' (sacrificando '+r.bUsed+' blocker(s))':'')+'. Se a mão dele não cobre esse valor, é lethal.';
+    if(r.val>=life*2000+2000) v.classList.add('hot');
+  }
+}
+document.getElementById('g_rows').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  const i=+b.dataset.i, act=b.dataset.act, free=num('g_don');
+  if(act==='dp'&&gAlloc()<free)G.rows[i].don++;
+  if(act==='dm'&&G.rows[i].don>0)G.rows[i].don--;
+  if(act==='rm')G.rows.splice(i,1);
+  gRender();
+});
+document.getElementById('g_rows').addEventListener('change',e=>{
+  const i=+e.target.dataset.i, f=e.target.dataset.f;
+  if(f==='bp')G.rows[i].base=Math.max(0,Math.round(+e.target.value||0));
+  if(f==='nm')G.rows[i].name=e.target.value;
+  gRender();
+});
+document.getElementById('g_add').addEventListener('click',()=>{G.rows.push({name:'Personagem '+G.rows.length,base:5000,don:0});gRender();});
+document.getElementById('g_auto').addEventListener('click',()=>{
+  const def=num('g_def'), life=num('g_life'), blk=num('g_blk'), free=num('g_don'), n=G.rows.length;
+  if(!n)return;
+  let best=null,bestScore=-1,combos=0; const alloc=new Array(n).fill(0);
+  const evalA=()=>{ const r=minCounter(G.rows.map((row,i)=>counterCost(row.base+alloc[i]*1000,def)),life,blk);
+    return r.val===null?-1:(r.val===Infinity?0:r.val); };
+  (function rec(i,left){ if(combos>80000)return;
+    if(i===n-1){alloc[i]=left;combos++;const s=evalA();if(s>bestScore){bestScore=s;best=[...alloc];}return;}
+    for(let d=left;d>=0;d--){alloc[i]=d;rec(i+1,left-d);} })(0,free);
+  if(best)G.rows.forEach((r,i)=>r.don=best[i]);
+  gRender();
+});
+['g_def','g_life','g_blk','g_don'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{
+  const free=num('g_don');
+  while(gAlloc()>free){const i=G.rows.findIndex(r=>r.don>0);if(i<0)break;G.rows[i].don--;}
+  gRender();
+}));
+
+/* ================= ENEL ================= */
+const E = { rows:[ {name:'Líder Enel',base:5000,don:0,isLeader:true}, {name:'Enel 6c',base:10000,don:0}, {name:'Sacerdote 1c',base:2000,don:0} ], late:1 };
+const eAlloc = ()=>E.rows.reduce((s,r)=>s+r.don,0);
+function eBonus(){ const D=num('e_der'); const a=Math.min(1,D); const r=Math.min(4,D-a); return {a,r,t:a+r}; }
+
+function eRender(){
+  const def=num('e_def'), life=num('e_life'), blk=num('e_blk'), free=num('e_start');
+  const b=eBonus();
+  document.getElementById('e_ability').innerHTML='Habilidade do Líder após o deramp: repõe <b>'+b.a+' DON!! ativo</b> e <b>'+b.r+' virado(s)</b> — total de <b>+'+fmt(b.t*1000)+'</b> anexado ao atacante marcado com ⚡.';
+  document.getElementById('e_left').textContent='DON!! iniciais usados: '+eAlloc()+' / '+free;
+  const powers=E.rows.map((r,i)=>r.base+r.don*1000+(i===E.late?b.t*1000:0));
+  const costs=powers.map(p=>counterCost(p,def));
+  const box=document.getElementById('e_rows'); box.innerHTML='';
+  E.rows.forEach((row,i)=>{
+    const div=document.createElement('div'); div.className='row'+(i===E.late?' late':'');
+    div.innerHTML=rowHTML(row,i,{power:powers[i],cost:costs[i],boltBtn:true,late:E.late,bonus:b.t});
+    box.appendChild(div);
+  });
+  const r=minCounter(costs,life,blk);
+  document.getElementById('e_hits').textContent=life+1;
+  document.getElementById('e_stops').textContent=Math.max(0,E.rows.length-life);
+  const ctr=document.getElementById('e_ctr'), v=document.getElementById('e_verdict');
+  v.classList.remove('hot');
+  if(r.val===null){ ctr.textContent='∞';
+    v.innerHTML='Sem lethal: são '+E.rows.length+' ataque(s) para '+(life+1)+' acertos necessários. Adicione atacantes ou desça a Vida dele antes.';
+  } else if(r.val===Infinity || r.val===0){ ctr.textContent='0';
+    v.innerHTML='Sem pressão: o oponente sobrevive gastando 0 de counter. Use "Otimizar turno" ou reforce os ataques fracos.';
+  } else { ctr.textContent=fmt(r.val);
+    v.innerHTML='Nessa linha o oponente precisa de no mínimo <strong>'+fmt(r.val)+' de counter</strong> para sobreviver'+(r.bUsed>0?' (sacrificando '+r.bUsed+' blocker(s))':'')+'. Ataque com todos menos o ⚡, devolva '+num('e_der')+' DON!!, ative o Líder e finalize com o marcado.';
+    if(r.val>=life*2000+2000) v.classList.add('hot');
+  }
+}
+document.getElementById('e_rows').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  const i=+b.dataset.i, act=b.dataset.act, free=num('e_start');
+  if(act==='dp'&&eAlloc()<free)E.rows[i].don++;
+  if(act==='dm'&&E.rows[i].don>0)E.rows[i].don--;
+  if(act==='late'&&!E.rows[i].isLeader)E.late=i;
+  if(act==='rm'){E.rows.splice(i,1);
+    if(E.late>=E.rows.length||(E.rows[E.late]&&E.rows[E.late].isLeader))E.late=E.rows.findIndex(r=>!r.isLeader);}
+  eRender();
+});
+document.getElementById('e_rows').addEventListener('change',e=>{
+  const i=+e.target.dataset.i, f=e.target.dataset.f;
+  if(f==='bp')E.rows[i].base=Math.max(0,Math.round(+e.target.value||0));
+  if(f==='nm')E.rows[i].name=e.target.value;
+  eRender();
+});
+document.getElementById('e_add').addEventListener('click',()=>{E.rows.push({name:'Personagem '+E.rows.length,base:5000,don:0});eRender();});
+document.getElementById('e_opt').addEventListener('click',()=>{
+  const def=num('e_def'), life=num('e_life'), blk=num('e_blk'), free=num('e_start'), bonus=eBonus().t, n=E.rows.length;
+  let best=null,bestScore=-1,combos=0; const alloc=new Array(n).fill(0);
+  const evalA=(late)=>{ const r=minCounter(E.rows.map((row,i)=>counterCost(row.base+alloc[i]*1000+(i===late?bonus*1000:0),def)),life,blk);
+    return r.val===null?-1:(r.val===Infinity?0:r.val); };
+  function rec(i,left,late){ if(combos>80000)return;
+    if(i===n-1){alloc[i]=left;combos++;const s=evalA(late);if(s>bestScore){bestScore=s;best={a:[...alloc],late};}return;}
+    for(let d=left;d>=0;d--){alloc[i]=d;rec(i+1,left-d,late);} }
+  for(let late=0;late<n;late++){ if(E.rows[late].isLeader)continue; rec(0,free,late); }
+  if(best){E.rows.forEach((r,i)=>r.don=best.a[i]);E.late=best.late;}
+  eRender();
+});
+['e_start','e_der','e_def','e_life','e_blk'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{
+  const free=num('e_start');
+  while(eAlloc()>free){const i=E.rows.findIndex(r=>r.don>0);if(i<0)break;E.rows[i].don--;}
+  eRender();
+}));
+
+gRender(); eRender();
+</script>
+</body>
+</html>
